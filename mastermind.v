@@ -102,7 +102,6 @@
 	   .enter(enter),
 		.colour_in(colour_in),
 		.colour_out(colour_out),
-		.current_state(curr_state),
 		.x(x),
 		.y(y),
 		.leds(LEDR[17:0]),
