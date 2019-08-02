@@ -1,4 +1,4 @@
- module lab6Part2(
+ module mastermind(
 		CLOCK_50,						//	On Board 50 MHz
 		// Your inputs and outputs here
         SW,
