@@ -170,14 +170,14 @@ localparam SETUP              = 5'b11111,
            GUESS_3            = 5'b00101,
            ASSESS_GUESS_WAIT  = 5'b00100,
            ASSESS_GUESS       = 5'b01100,
-			  CLUE_0_WAIT        = 5'b01101,
-			  CLUE_0             = 5'b01001,
-			  CLUE_1_WAIT        = 5'b01011,
-			  CLUE_1             = 5'b01010,
-			  CLUE_2_WAIT        = 5'b11010,
-			  CLUE_2					= 5'b11011,
-			  CLUE_3_WAIT			= 5'b11001,
-			  CLUE_3					= 5'b11000,
+	   CLUE_0_WAIT        = 5'b01101,
+           CLUE_0             = 5'b01001,
+	   CLUE_1_WAIT        = 5'b01011,
+	   CLUE_1             = 5'b01010,
+	   CLUE_2_WAIT        = 5'b11010,
+	   CLUE_2	      = 5'b11011,
+	   CLUE_3_WAIT	      = 5'b11001,
+     	   CLUE_3             = 5'b11000,
            ROW_BACK           = 5'b01000,
            GAME_OVER          = 5'b01110,
            WON                = 5'b11110,
@@ -204,17 +204,17 @@ localparam SETUP              = 5'b11111,
                 GUESS_3_WAIT: next_state = enter ? GUESS_3_WAIT : GUESS_3;
                 GUESS_3: next_state = enter ? ASSESS_GUESS_WAIT : GUESS_3;
                 ASSESS_GUESS_WAIT: next_state = enter ? ASSESS_GUESS_WAIT : ASSESS_GUESS;
-			       ASSESS_GUESS: next_state = ((y == 7'b0011100) || (rspot == 3'b100)) ? GAME_OVER : CLUE_0_WAIT;
-					 CLUE_0_WAIT: next_state = enter ? CLUE_0_WAIT : CLUE_0;
-					 CLUE_0: next_state = enter ? CLUE_1_WAIT : CLUE_0;
-					 CLUE_1_WAIT: next_state = enter ? CLUE_1_WAIT : CLUE_1;
-					 CLUE_1: next_state = enter ? CLUE_2_WAIT : CLUE_1;
-					 CLUE_2_WAIT: next_state = enter ? CLUE_2_WAIT : CLUE_2;
-					 CLUE_2: next_state = enter ? CLUE_3_WAIT : CLUE_2;
-					 CLUE_3_WAIT: next_state = enter ? CLUE_3_WAIT : CLUE_3;
-					 CLUE_3: next_state = enter ? ROW_BACK : CLUE_3;
+	        ASSESS_GUESS: next_state = ((y == 7'b0011100) || (rspot == 3'b100)) ? GAME_OVER : CLUE_0_WAIT; // Go to gameover state if player won or finished entering 10 rows of guesses. Else go to clue_0_wait
+		CLUE_0_WAIT: next_state = enter ? CLUE_0_WAIT : CLUE_0;
+		CLUE_0: next_state = enter ? CLUE_1_WAIT : CLUE_0;
+		CLUE_1_WAIT: next_state = enter ? CLUE_1_WAIT : CLUE_1;
+		CLUE_1: next_state = enter ? CLUE_2_WAIT : CLUE_1;
+		CLUE_2_WAIT: next_state = enter ? CLUE_2_WAIT : CLUE_2;
+		CLUE_2: next_state = enter ? CLUE_3_WAIT : CLUE_2;
+		CLUE_3_WAIT: next_state = enter ? CLUE_3_WAIT : CLUE_3;
+		CLUE_3: next_state = enter ? ROW_BACK : CLUE_3;
                 ROW_BACK: next_state = enter ? GUESS_0_WAIT : ROW_BACK;
-                GAME_OVER: next_state = (rspot == 3'b100) ? WON : LOST;
+		    GAME_OVER: next_state = (rspot == 3'b100) ? WON : LOST; // If player guesses the code correctly, go to win state, else go to lose state
                 WON: next_state = enter ? SETUP : WON;
                 LOST: next_state = enter ? SETUP : LOST;
             default: next_state = SETUP;
@@ -244,12 +244,13 @@ localparam SETUP              = 5'b11111,
 				code3_seen = 3'b000;
 				codetoguess = 1'b1;
 			end
-			// In each code state
+			// In each code state, set the colour and x positions for drawing the box that corresponds to each code
 			CODE_0: begin
 				colour_out <= colour_in;
 				code0 <= colour_in;
 				x <= 8'b01000010;
 			end
+			// In each code_i_wait state, reset the colour of the code_i box to black to prevent the guesser from seeing the actual code
 			CODE_1_WAIT: begin
 				colour_out = 3'b000;
 			end
@@ -279,6 +280,7 @@ localparam SETUP              = 5'b11111,
 				colour_out <= colour_in;
 				x = 8'b00111111;
 				end
+			// Set the colour and x positions for each guess_i state
 			GUESS_0: begin
 				colour_out <= colour_in;
 				guess0 <= colour_in;
@@ -309,10 +311,12 @@ localparam SETUP              = 5'b11111,
 				guess3 <= colour_in;
 				x <= 8'b01010111;
 			end
+			// Checks the user's guess against actual code and calculates rspot and wspot
 			ASSESS_GUESS: begin
 				// Binary addition needed
 				rspot = (guess0 == code0) + (guess1 == code1) + (guess2 == code2) + (guess3 == code3);
-
+				
+				// Check whether the player got any of the guesses correct
 				if (guess0 == code0)
 					code0_rspot = 3'b001;
 				
@@ -325,7 +329,8 @@ localparam SETUP              = 5'b11111,
 				if (guess3 == code3)
 					code3_rspot = 3'b001;
 				
-
+				// Logic for calculating wspot (sets codei_seen to true whenever guessi matches codei, codei has not been seen yet
+				// and codei_rspot is false (to makesure we don't count the guesses that the player got correct)
 				if ((guess0 == code1) && (code1_seen == 3'b000) && (code0_rspot == 3'b000) && (code1_rspot == 3'b000))
 					code1_seen = 3'b001;
 				else if ((guess0 == code2) && (code2_seen == 3'b000) && (code0_rspot == 3'b000) && (code2_rspot == 3'b000))
@@ -334,7 +339,6 @@ localparam SETUP              = 5'b11111,
 					code3_seen = 3'b001;
 			
 
-			
 				if ((guess1 == code0) && (code0_seen == 3'b000) && (code1_rspot == 3'b000) && (code0_rspot == 3'b000))
 				  code0_seen = 3'b001;
 				else if ((guess1 == code2) && (code2_seen == 3'b000) && (code1_rspot == 3'b000) && (code2_rspot == 3'b000))
@@ -350,8 +354,6 @@ localparam SETUP              = 5'b11111,
 				else if ((guess2 == code3) && (code3_seen == 3'b000) && (code2_rspot == 3'b000) && (code3_rspot == 3'b000))
 					code3_seen = 3'b001;
 			
-
-			
 				if ((guess3 == code0) && (code0_seen == 3'b000) && (code3_rspot == 3'b000) && (code0_rspot == 3'b000))
 					code0_seen = 3'b001;
 				else if ((guess3 == code1) && (code1_seen == 3'b000) && (code3_rspot == 3'b000) && (code1_rspot == 3'b000))
@@ -362,7 +364,8 @@ localparam SETUP              = 5'b11111,
 		
 				// Calculate wspot
 				wspot <= code0_seen + code1_seen + code2_seen + code3_seen;
-			end		
+			end
+		        // In each clue_i state we set the colour of the clue_i box to red, white or black depending on the rspot and wspot values 
 			CLUE_0: begin
 				x = 8'b01100001;
 				if (rspot >= 3'b001)
@@ -416,7 +419,7 @@ localparam SETUP              = 5'b11111,
 			// default:    // don't need default since we already made sure all of our outputs were assigned a value at the start of the always block
         endcase
     end
-
+	// To increment count that is used for flashing the LEDRs/LEDGs when the player wins/loses
 	always @(posedge clk)
 	begin
 		if (!resetn)
@@ -425,6 +428,7 @@ localparam SETUP              = 5'b11111,
 			count <= count + 1;
 	end
 	
+	// Flash the leds (RED) when player loses and ledgs (GREEN) when the player wins
 	always @(*)
 	begin
 		case (current_state)
@@ -452,7 +456,7 @@ localparam SETUP              = 5'b11111,
 				 ledg[7] <= count[23];
 				 ledg[6] <= count[24];
 				 ledg[5] <= count[23];
-			    ledg[4] <= count[24];
+			         ledg[4] <= count[24];
 				 ledg[3] <= count[23];
 				 ledg[2] <= count[24];
 				 ledg[1] <= count[23];
@@ -461,6 +465,7 @@ localparam SETUP              = 5'b11111,
 		endcase
 	end
 	
+	// Calculating current y position
 	always @(*)
 	begin
 		if (current_state == SETUP)
@@ -471,11 +476,13 @@ localparam SETUP              = 5'b11111,
 
 	always@(posedge clk)
 	begin
+		// Reset y position in SETUP state
 		if (current_state == SETUP)
-			//fourcheck = 1'b1;
 			y = 7'b0010001;
+		// Set y to the position of the first row of guesses
 		else if (current_state == GUESS_0_WAIT && codetoguess == 1'b1)
 			y <= 7'b1101101;
+		// Decrement y in ROW_BACK state
 		else if (current_state == ROW_BACK)
 			y <= y_decrement;
 	end
@@ -495,17 +502,15 @@ module control(
     input clk,
     input resetn,
     input go,
-
     output reg plot,
-	output reg enable_counter
+    output reg enable_counter
     );
-
 	reg [3:0] current_state, next_state;
 
-	localparam  S_INIT        	= 2'b00,
+	localparam  S_INIT      = 2'b00,
                 S_CYCLE_0       = 2'b01,
                 S_CYCLE_1       = 2'b11,
-				S_CYCLE_2  		= 2'b10;
+		S_CYCLE_2  	= 2'b10;
 
 	// Next state logic aka our state table
     always@(*)
@@ -518,14 +523,13 @@ module control(
             default: 	   next_state = S_INIT;
         endcase
     end // state_table
-
-	 // Output logic aka all of our datapath control signals
+   
+   // Output logic aka all of our datapath control signals
     always @(*)
     begin: enable_signals
         // By default make all our signals 0
 		plot = 1'b0;
 		enable_counter = 1'b0;
-
 		case(current_state)
 			S_INIT: begin
 				plot = 1'b0;
@@ -539,7 +543,7 @@ module control(
         endcase
     end // enable_signals
 
-	// current_state registers
+   // current_state registers
     always@(posedge clk)
     begin: state_FFs
         if(!resetn)
@@ -552,23 +556,24 @@ endmodule
 
 module datapath(enable, clk, x_in, y_in, resetn, x_out, y_out, fourbit);
    input clk, enable, resetn;
-	input [7:0] x_in;
-	input [6:0] y_in;
-	input fourbit;
-    output [7:0] x_out;
-	output [6:0] y_out;
-	reg [3:0] counter;
-
-	// Counter
+   input [7:0] x_in;
+   input [6:0] y_in;
+   input fourbit;
+   output [7:0] x_out;
+   output [6:0] y_out;
+   reg [3:0] counter;
+   
+   // The logic part was taken from Lab6Part2
+   // Counter -> used for drawing the 4x4 boxes for the codes/guesses/clues
     always @(posedge clk)
     begin
         if (resetn == 1'b0)
             counter <= 4'b0000;
-		  else if(enable == 1'b1)
-				counter <= counter + 1'b1;
+        else if(enable == 1'b1)
+	    counter <= counter + 1'b1;
     end
 
-
-	assign x_out = x_in + counter[1:0];
+   // Increment x and y by the counter to draw the square boxes for the codes/guesses/clues
+   assign x_out = x_in + counter[1:0];
    assign y_out = y_in + counter[3:2];
 endmodule
