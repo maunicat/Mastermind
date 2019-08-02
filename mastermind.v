@@ -13,7 +13,6 @@
 		VGA_B,   						//	VGA Blue[9:0]
 		LEDR,
 		LEDG,
-		HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, HEX6, HEX7,
 		KEY
 	);
 
@@ -145,7 +144,8 @@ module gameboard(
 	// The positions for drawing the boxes (for the codes/guesses/clues)
 	output reg [7:0] x; 
 	output reg [6:0] y;
-	
+	reg [6:0] y_decrement;
+
 	// To get the colour of the boxes to display on the board
 	output reg [2:0] colour_out;
 	reg [5:0] current_state;
