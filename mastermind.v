@@ -17,32 +17,27 @@
 		KEY
 	);
 
-	input			CLOCK_50;				//	50 MHz
+	input	CLOCK_50;				//	50 MHz
 	input [17:0] SW;
 	input [3:0] KEY;
 	// Declare your inputs and outputs here
 	// Do not change the following outputs
-	output			VGA_CLK;   				//	VGA Clock
-	output			VGA_HS;					//	VGA H_SYNC
-	output			VGA_VS;					//	VGA V_SYNC
-	output			VGA_BLANK_N;				//	VGA BLANK
-	output			VGA_SYNC_N;				//	VGA SYNC
-	output	[9:0]	VGA_R;   				//	VGA Red[9:0]
-	output	[9:0]	VGA_G;	 				//	VGA Green[9:0]
-	output	[9:0]	VGA_B;   				//	VGA Blue[9:0]
-
-	output [17:0] LEDR;
-	output [7:0] LEDG;
-	output [6:0] HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, HEX6, HEX7;
-	wire resetn, enter, load;
-	assign resetn = SW[17];
-	assign enter = !KEY[0];
-
-	// Outputs
-	wire [2:0] rspot;
-	wire [2:0] wspot;
-	wire [4:0] curr_state;
-	wire [2:0] code0, code1, code2, code3, guess0, guess1, guess2, guess3;
+	output VGA_CLK;      //	VGA Clock
+	output VGA_HS;			//	VGA H_SYNC
+	output VGA_VS;			//	VGA V_SYNC
+	output VGA_BLANK_N;	//	VGA BLANK
+	output VGA_SYNC_N;	//	VGA SYNC
+	output [9:0] VGA_R;  //	VGA Red[9:0]
+	output [9:0] VGA_G;	//	VGA Green[9:0]
+	output [9:0] VGA_B;  //	VGA Blue[9:0]
+	
+	output [17:0] LEDR; // To flash when the player loses
+	output [7:0] LEDG; // To flash when the player wins
+	
+	wire resetn, enter, load; // For getting user input
+	
+	assign resetn = SW[17]; 
+	assign enter = !KEY[0]; // To enter the colours for the code/guess
 
 
 	// Create the colour, x, y and writeEn wires that are inputs to the controller.
@@ -51,18 +46,13 @@
 	wire [2:0] colour_in;
 	wire writeEn;
 	wire startCount;
-    wire [7:0] x_out;
+   wire [7:0] x_out;
 	wire [6:0] y_out;
 	wire [2:0] colour_out;
-	wire fourbyfour;
 
 	assign colour_in = SW[2:0];
 	wire draw_En = 1'b1;
-//	assign draw_En = SW[16];
 
-	// Wire and register for making LEDS flash when player wins/loses
-	reg [32:0] count;
-	wire outcome, gameover;
 
 	// Create an Instance of a VGA controller - there can be only one!
 	// Define the number of colours as well as the initial background
@@ -108,83 +98,60 @@
 	 );
 
 	gameboard g0(
-	    .clk(CLOCK_50),
-	    .resetn(resetn),
-		 .fourcheck(fourbyfour),
-	    .enter(enter),
+	   .clk(CLOCK_50),
+	   .resetn(resetn),
+	   .enter(enter),
 		.colour_in(colour_in),
 		.colour_out(colour_out),
-		.rspot(rspot),
-		.wspot(wspot),
 		.current_state(curr_state),
-		.code0(code0), .code1(code1), .code2(code2), .code3(code3),
-		.guess0(guess0), .guess1(guess1), .guess2(guess2), .guess3(guess3),
 		.x(x),
 		.y(y),
 		.leds(LEDR[17:0]),
 		.ledg(LEDG[7:0])
 	);
-
-	//assign LEDR[6:0] = y;
-	//assign LEDR[17:13] = curr_state;
-	//assign LEDG[2:0] = wspot;
-
-
-	// Display the guess
-	hex_display(.IN(guess0), .OUT(HEX3));
-	hex_display(.IN(guess1), .OUT(HEX2));
-	hex_display(.IN(guess2), .OUT(HEX1));
-	hex_display(.IN(guess3), .OUT(HEX0));
-
-	// Display the code
-	hex_display(.IN(code0), .OUT(HEX7));
-	hex_display(.IN(code1), .OUT(HEX6));
-	hex_display(.IN(code2), .OUT(HEX5));
-	hex_display(.IN(code3), .OUT(HEX4));
 endmodule
 
 module gameboard(
     clk,
     resetn,
-	 fourcheck,
-	//draw,
     enter,
     colour_in,
 	 colour_out,
-	rspot,
-	wspot,
-	current_state,
-	code0, code1, code2, code3,
-	guess0, guess1, guess2, guess3,
 	x,
 	y,
 	leds,
 	ledg
 );
-	input clk, resetn, enter;
-	input [2:0] colour_in;
-	reg codetoguess;
-	reg [6:0] y_decrement;
-	output reg [2:0] code0, code1, code2, code3, guess0, guess1, guess2, guess3;
+	input clk, resetn, enter; 
+	input [2:0] colour_in; // Colour entered by user
+	reg codetoguess;  
+	
+	// To store the code and guesses entered by the players
+	reg [2:0] code0, code1, code2, code3, guess0, guess1, guess2, guess3;
+	reg [2:0] c;
+	
+	// Used when calculating wspot
 	reg [2:0] code0_seen, code1_seen, code2_seen, code3_seen;
 	reg [2:0] code0_rspot, code1_rspot,code2_rspot,code3_rspot;
-	reg [2:0] c;
-	output reg [2:0] wspot;
-	reg [26:0] count;
-	output reg [17:0] leds;
-	output reg [7:0] ledg;
-	//output reg outcome;
-	//output reg gameover = 1'b0;
-	//output reg draw;
 	
-	output reg fourcheck;
-	output reg [7:0] x;
+	reg [2:0] rspot; // The number of spots the player got correct (both colour and position) in the current guess
+	reg [2:0] wspot; // The number of colours the player got correct but in the wrong spot in the current guess
+	
+	// Used to make the LEDRs/LEDGs flash when player wins or loses
+	reg [26:0] count;
+	output reg [17:0] leds; // To flash when the player loses
+	output reg [7:0] ledg; // To flash when the player wins
+	
+	// The positions for drawing the boxes (for the codes/guesses/clues)
+	output reg [7:0] x; 
 	output reg [6:0] y;
-	output reg [2:0] rspot;
+	
+	// To get the colour of the boxes to display on the board
 	output reg [2:0] colour_out;
-	output reg [5:0] current_state;
+	reg [5:0] current_state;
 	reg [5:0] next_state;
 
+// States and their binary representations
 localparam SETUP              = 5'b11111,
            CODE_0             = 5'b11101,
            CODE_1_WAIT        = 5'b11100,
@@ -216,6 +183,7 @@ localparam SETUP              = 5'b11111,
            WON                = 5'b11110,
            LOST               = 5'b01111;
 
+// Finite state machine that drives the game
  always @(*)
     begin: state_table
             case (current_state)
@@ -256,10 +224,9 @@ localparam SETUP              = 5'b11111,
     // Output logic aka all of our datapath control signals
     always @(*)
     begin: enable_signals
-        // By default make all our signals 0
         case (current_state)
 			SETUP: begin
-				//draw = 1'b0;
+				// By default make all our signals and wires 0
 				rspot = 3'b000;
 				wspot = 3'b000;
 				x = 8'b00111111;
@@ -277,8 +244,8 @@ localparam SETUP              = 5'b11111,
 				code3_seen = 3'b000;
 				codetoguess = 1'b1;
 			end
+			// In each code state
 			CODE_0: begin
-				//draw = 1'b1;
 				colour_out <= colour_in;
 				code0 <= colour_in;
 				x <= 8'b01000010;
@@ -287,7 +254,6 @@ localparam SETUP              = 5'b11111,
 				colour_out = 3'b000;
 			end
 			CODE_1: begin
-				//draw = 1'b1;
 				colour_out <= colour_in;
 				code1 <= colour_in;
 				x <= 8'b01001010;
@@ -310,7 +276,6 @@ localparam SETUP              = 5'b11111,
 				x <= 8'b01011010;
 			end
 			GUESS_0_WAIT: begin
-				//colour_out = 3'b000;
 				colour_out <= colour_in;
 				x = 8'b00111111;
 				end
@@ -397,14 +362,8 @@ localparam SETUP              = 5'b11111,
 		
 				// Calculate wspot
 				wspot <= code0_seen + code1_seen + code2_seen + code3_seen;
-			end
-			/*CLUE_0_WAIT: begin
-				colour_out = 3'b000;
-			end
-			*/
-			
+			end		
 			CLUE_0: begin
-				//colour_out = 3'b000;
 				x = 8'b01100001;
 				if (rspot >= 3'b001)
 					colour_out = 3'b100;
@@ -418,7 +377,6 @@ localparam SETUP              = 5'b11111,
 				x = 8'b01100110;
 			end
 			CLUE_1: begin
-				//colour_out = 3'b000;
 				x = 8'b01100110;
 				if ((rspot >= 3'b010))
 					colour_out = 3'b100;
@@ -432,7 +390,6 @@ localparam SETUP              = 5'b11111,
 				x = 8'b01101011;
 			end
 			CLUE_2: begin
-				//colour_out = 3'b000;
 				x = 8'b01101011;
 				if ((rspot >= 3'b011))
 					colour_out = 3'b100;
@@ -447,7 +404,6 @@ localparam SETUP              = 5'b11111,
 				x = 8'b01110000;
 			end
 			CLUE_3: begin
-				//colour_out = 3'b000;
 				x = 8'b01110000;
 				if ((rspot == 3'b100))
 					colour_out = 3'b100;
@@ -457,22 +413,11 @@ localparam SETUP              = 5'b11111,
 				else
 					colour_out = 3'b000;
 			end
-			//GAME_OVER: begin
-				//gameover <= 1'b1;
-			//end
-			WON: begin
-				// output game won
-			//	outcome <= 1'b1;
-			end
-			LOST: begin
-				// output game lost
-			//	outcome <= 1'b0;
-			end
-				// default:    // don't need default since we already made sure all of our outputs were assigned a value at the start of the always block
+			// default:    // don't need default since we already made sure all of our outputs were assigned a value at the start of the always block
         endcase
     end
 
-	 always @(posedge clk)
+	always @(posedge clk)
 	begin
 		if (!resetn)
 			count <= 0;
@@ -532,10 +477,7 @@ localparam SETUP              = 5'b11111,
 		else if (current_state == GUESS_0_WAIT && codetoguess == 1'b1)
 			y <= 7'b1101101;
 		else if (current_state == ROW_BACK)
-			//fourcheck = 1'b0;
 			y <= y_decrement;
-		//else if (current_state == ROW_BACK)
-			//fourcheck = 1'b1;
 	end
 
    // current_state registers
@@ -609,20 +551,13 @@ module control(
 endmodule
 
 module datapath(enable, clk, x_in, y_in, resetn, x_out, y_out, fourbit);
-    input clk, enable, resetn;
+   input clk, enable, resetn;
 	input [7:0] x_in;
 	input [6:0] y_in;
 	input fourbit;
     output [7:0] x_out;
 	output [6:0] y_out;
-	//output [2:0] data_colour;
-
 	reg [3:0] counter;
-	//reg [2:0] two_counter;
-	/*reg [7:0] x_reg;
-	//reg [6:0] y_reg;
-	//reg [2:0] c_reg;
-	*/
 
 	// Counter
     always @(posedge clk)
@@ -633,17 +568,7 @@ module datapath(enable, clk, x_in, y_in, resetn, x_out, y_out, fourbit);
 				counter <= counter + 1'b1;
     end
 
-	/* Counter
-    always @(posedge ld_x)
-    begin
-        if(resetn == 1'b0)
-            x_reg <= 8'd0;
-        else if(ld_x == 1'b1)
-            x_reg <= x_in;
-    end
-	*/
 
 	assign x_out = x_in + counter[1:0];
    assign y_out = y_in + counter[3:2];
-	//assign colour_out = data_colour;
 endmodule
